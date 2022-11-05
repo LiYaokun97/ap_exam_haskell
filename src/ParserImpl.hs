@@ -26,7 +26,7 @@ pERules :: Parser [ERule]
 pERules = do
             rule <- pERule
             return [rule]
-    <++
+    +++
         do
             rule <- pERule
             rules <- pERules
@@ -49,11 +49,11 @@ pLHS =  do
             x <- string "_"
             skipSpaceAndComment
             return ("_", getLHSKind x, Nothing)
-    <++
+    +++
         do
             (SNTerm name) <- pName
             return (name, getLHSKind name, Nothing)
-    <++
+    +++
         do
             (SNTerm name) <- pName
             optType <- pOptType
@@ -115,7 +115,7 @@ pHtextGetString s = do
 pAlts :: Parser ERHS
 pAlts = do
             pSeq
-    <++
+    +++
         do
             seq <- pSeq
             string "|"
@@ -127,7 +127,7 @@ pAlts = do
 pSeq :: Parser ERHS
 pSeq = do
             pSimple
-    <++
+    +++
         do
             simplez <- pSimplez
             string "{"
@@ -135,7 +135,7 @@ pSeq = do
             string "}"
             skipSpaceAndComment
             return $ ESeq [simplez] htext
-    <++
+    +++
         do
             string "{"
             htext <- pHtext True
@@ -150,7 +150,7 @@ pSimplez = do
             simplez <- pSimplez
             skipSpaceAndComment
             return $ ESeq [simple, simplez] "{()}"
-    <++
+    +++
         do
             pSimple
 
@@ -158,19 +158,19 @@ pSimplez = do
 pSimple:: Parser ERHS
 pSimple = do
             pSimple0
-    <++
+    +++
         do
             simple0 <- pSimple0
             string "?"
             skipSpaceAndComment
             return $ EOption simple0
-    <++
+    +++
         do
             simple0 <- pSimple0
             string "*"
             skipSpaceAndComment
             return $ EMany simple0
-    <++
+    +++
         do
             string "!"
             skipSpaceAndComment
@@ -181,7 +181,7 @@ pSimple = do
 pSimple0 :: Parser ERHS
 pSimple0 = do
             pAtom
-    <++
+    +++
         do
             simple0 <- pSimple0
             string "{?"
@@ -194,18 +194,18 @@ pSimple0 = do
 pAtom :: Parser ERHS
 pAtom = do
             ESimple <$> pName
-    <++
+    +++
         do
             ESimple <$> pTokLit
-    <++
+    +++
         do
             string "@"
             skipSpaceAndComment
             return $ ESimple SAnyChar
-    <++
+    +++
         do
             ESimple <$> pCharLit
-    <++
+    +++
         do
             string "("
             alts <- pAlts
