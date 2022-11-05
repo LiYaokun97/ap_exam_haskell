@@ -1,4 +1,6 @@
 -- Put yor parser implementation in this file
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use when" #-}
 module ParserImpl where
 
 import Definitions
@@ -35,15 +37,18 @@ pERule :: Parser ERule
 pERule = do
             lhs <- pLHS
             string "::="
+            skipSpaceAndComment
             alts <- pAlts
             string "."
+            skipSpaceAndComment
             return (lhs, alts)
 
 -- LHS ::= name OptType | name | "_".
 pLHS :: Parser (NTName, RKind, Maybe Type)
 pLHS =  do
-            string "_"
-            return ("_", getLHSKind "_", Nothing)
+            x <- string "_"
+            skipSpaceAndComment
+            return ("_", getLHSKind x, Nothing)
     <++
         do
             (SNTerm name) <- pName
@@ -51,12 +56,12 @@ pLHS =  do
     <++
         do
             (SNTerm name) <- pName
-            optType <-pOptType
-            return (name, RToken, Just $ AUser optType)
+            optType <- pOptType
+            return (name, getLHSKind name, Just $ AUser optType)
 
 -- get corresponding RKind according the name of LHS
 getLHSKind :: String -> RKind
-getLHSKind lhsName = case lhsName of 
+getLHSKind lhsName = case lhsName of
         "_" -> RSep
         x:_ | isLower x-> RToken
         _ -> RPlain
@@ -66,13 +71,45 @@ getLHSKind lhsName = case lhsName of
 pOptType :: Parser HText
 pOptType = do
         string "{:"
-        htext <- pHtext  -- todo: 加上pHtext的限制
+        htext <- pHtext False -- todo: 加上pHtext的限制
         string "}"
+        skipSpaceAndComment
         return htext
 
+{-
+    Any sequence of arbitrary characters, including any leading whitespace. Characters
+    { and } to be included in the sequence must be written as {{ and }}, respectively.
+    When following an opening {, the htext must not start with a : or ?.
 
-pHtext :: Parser HText
-pHtext = undefined
+    Bool : Whether the htext is following an opening {
+-}
+pHtext :: Bool -> Parser HText
+pHtext isFollowPara = if isFollowPara
+    then do
+        c <- satisfy (\x -> x /= ':' && x /= '?')
+        skipSpaceAndComment
+        pHtextGetString [c]
+    else do 
+        skipSpaceAndComment
+        pHtextGetString ""
+
+pHtextGetChar :: Parser Char
+pHtextGetChar = do
+            string "{{"
+            return '{'
+    <++
+        do
+            string "}}"
+            return '}'
+    <++ do  get
+
+
+pHtextGetString :: String -> Parser String
+pHtextGetString s = do
+            c <- pHtextGetChar
+            pHtextGetString (s ++ [c])
+    <++ do  return s
+
 
 -- Alts ::= Seq |Seq "|" Alts.
 pAlts :: Parser ERHS
@@ -82,6 +119,7 @@ pAlts = do
         do
             seq <- pSeq
             string "|"
+            skipSpaceAndComment
             alts <- pAlts
             return (ESeq [seq, alts] "{()}")
 
@@ -93,14 +131,16 @@ pSeq = do
         do
             simplez <- pSimplez
             string "{"
-            htext <- pHtext
+            htext <- pHtext True
             string "}"
+            skipSpaceAndComment
             return $ ESeq [simplez] htext
     <++
         do
             string "{"
-            htext <- pHtext
+            htext <- pHtext True
             string "}"
+            skipSpaceAndComment
             return $ ESeq [] htext
 
 -- Simplez ::=  Simple Simplez | Simple.
@@ -108,6 +148,7 @@ pSimplez :: Parser ERHS
 pSimplez = do
             simple <- pSimple
             simplez <- pSimplez
+            skipSpaceAndComment
             return $ ESeq [simple, simplez] "{()}"
     <++
         do
@@ -121,15 +162,18 @@ pSimple = do
         do
             simple0 <- pSimple0
             string "?"
+            skipSpaceAndComment
             return $ EOption simple0
     <++
         do
             simple0 <- pSimple0
             string "*"
+            skipSpaceAndComment
             return $ EMany simple0
     <++
         do
             string "!"
+            skipSpaceAndComment
             ENot <$> pSimple0
 
 
@@ -141,8 +185,9 @@ pSimple0 = do
         do
             simple0 <- pSimple0
             string "{?"
-            htext <- pHtext
+            htext <- pHtext False
             string "}"
+            skipSpaceAndComment
             return $ EPred simple0 htext
 
 -- Atom ::= name | tokLit | "@" | charLit | "(" Alts ")".
@@ -155,6 +200,7 @@ pAtom = do
     <++
         do
             string "@"
+            skipSpaceAndComment
             return $ ESimple SAnyChar
     <++
         do
@@ -164,19 +210,26 @@ pAtom = do
             string "("
             alts <- pAlts
             string ")"
+            skipSpaceAndComment
             return alts
 
 -- Any printable character (including '), enclosed in single-quotes.
 pCharLit :: Parser Simple
-pCharLit = do SChar <$> pCharLitString 
+pCharLit = do 
+            s <-pCharLitString
+            skipSpaceAndComment
+            return $ SChar s
 
 pCharLitString :: Parser Char
-pCharLitString = do between (char '\'') (char '\'') get
+pCharLitString = do between (char '\'') (char '\'') (satisfy isPrint)
 
 -- Any non-empty sequence of printable characters, enclosed in double-quotes. If the
 -- sequence is itself to contain a double-quote, it must be written as "".
 pTokLit :: Parser Simple
-pTokLit = do SLit <$> pTokLitString
+pTokLit = do 
+            s <- pTokLitString
+            skipSpaceAndComment
+            return $ SLit s
 
 pTokLitString :: Parser String
 pTokLitString = do between (char '"') (char '"') pTokLitStringHelper
@@ -197,14 +250,17 @@ getOneChar = do
 getMoreChar :: String -> Parser String
 getMoreChar s = do
                 x <- getOneChar
-                return (s ++ x)
+                getMoreChar (s ++ x)
         <++ do  return s
 
 
 -- Name: Any sequence of (Unicode) letters, digits, and underscores, starting with a letter.
 -- There are no reserved names.
 pName :: Parser Simple
-pName = do SNTerm <$> pNameString
+pName = do  
+            s <- pNameString
+            skipSpaceAndComment
+            return $ SNTerm s
 
 pNameString :: Parser String
 pNameString = do
@@ -216,3 +272,15 @@ pNameString = do
 -- pPreamble :: Parser String
 -- pPreamble = undefined
 
+skipSpaceAndComment :: Parser()
+skipSpaceAndComment = do
+   skipSpaces
+   s <- look
+   if isComment s then
+      do
+         munch1 (/= '\n')
+         skipSpaceAndComment
+   else return ()
+
+isComment :: String -> Bool
+isComment s = length s >= 2 && head s == '-' && head (tail s) == '-'
