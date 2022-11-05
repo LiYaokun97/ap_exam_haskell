@@ -13,13 +13,29 @@ import Data.Functor.Contravariant (phantom)
 
 type ParseError = String -- you may replace this
 type Parser a = ReadP a
-parseString :: String -> Either ParseError EGrammar
-parseString s = case readP_to_S pERules s of
+
+parseSpec :: String -> EM (String, EGrammar)
+parseSpec program = case readP_to_S pSpec program of
                    [] -> Left "empty parsing!!!"
                    x -> case x of
                            [ (e, "")] -> Right e
-                           ls -> Left (show ls)
+                           ls -> Left ("error! and the current parsing result is : \n" ++ show ls)
 
+-- Spec ::= preamble ERules.
+pSpec :: Parser (String, EGrammar)
+pSpec = do
+        s <- pPreamble
+        erules <- pERules
+        return (s, erules)
+
+{-
+    if there is preamble then parse it, otherwise return empty string as preamble
+-}
+pPreamble :: Parser String
+pPreamble = do 
+        manyTill get (string "---")
+    <++ 
+        return ""
 
 -- ERules ::= ERule | ERule ERules.
 pERules :: Parser [ERule]
@@ -267,10 +283,6 @@ pNameString = do
             a <- satisfy isLetter
             as <- munch (\x -> (x =='_' || isLetter x || isDigit x) && isPrint x)
             return $ a:as
-
-
--- pPreamble :: Parser String
--- pPreamble = undefined
 
 skipSpaceAndComment :: Parser()
 skipSpaceAndComment = do

@@ -5,16 +5,9 @@ LHS ::= name OptType | "_".
 OptType ::= | "{:" htext "}".
 
 
-
-
-
-
-
-
 Alts ::= 
         Seq |
         Seq "|" Alts.
-
 
 
 Seq ::= 
