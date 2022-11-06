@@ -1,0 +1,17 @@
+module BoaParser (parseString) where
+
+import BoaAST
+
+import qualified Text.ParserCombinators.ReadP as RP
+import Data.Char (isSpace, isLetter, isPrint, isDigit)
+
+reserved = ["not", "for", "if", "in", "True", "False", "None"]
+
+negOper :: Op -> Exp -> Exp -> Exp
+negOper o e1 e2 = Not (Oper o e1 e2)
+
+parseString = parseTop p_Start
+
+---
+
+Word ::= Char{?isAlpha} {?isUpperletter}.
