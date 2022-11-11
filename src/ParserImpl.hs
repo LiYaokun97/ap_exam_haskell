@@ -1,8 +1,8 @@
 -- Put yor parser implementation in this file
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use when" #-}
-module ParserImpl where
-
+module ParserImpl (parseSpec) where 
+ 
 import Definitions
 import Text.ParserCombinators.ReadP
 
@@ -11,7 +11,7 @@ import qualified Data.Map as Map
 import GHC.Conc (pseq)
 import Data.Functor.Contravariant (phantom)
 
-type ParseError = String -- you may replace this
+type ParseError = String 
 type Parser a = ReadP a
 
 parseSpec :: String -> EM (String, EGrammar)

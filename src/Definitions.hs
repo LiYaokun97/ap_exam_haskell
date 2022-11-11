@@ -16,7 +16,7 @@ data ERHS =
   | EBar ERHS ERHS        {- Nested choices -}
   | EOption ERHS          {- Simple0 "?" -}
   | EMany ERHS            {- Simple0 "*" -}
-  | EPred ERHS HText      {- "{?" htext "}" Simple1 -}
+  | EPred ERHS HText      {- Atom "{?" htext "}" "{?" htext "}" "{?" htext "}" ... -}
   | ENot ERHS             {-"!" Simple0. -}
   deriving (Eq, Show, Read) 
 

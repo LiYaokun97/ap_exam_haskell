@@ -23,10 +23,14 @@ test_boa = test_file "../examples/boa.appy"
 test_small_boa :: IO ()
 test_small_boa = test_file "../examples/small_boa.appy"
 
+test_one_line :: String -> IO()
+test_one_line s = case parseSpec s of
+                Left err -> putStrLn err
+                Right (s, grammar) -> putStrLn $ "the preamble is : \n " ++ s ++ "\nthe grammar is : \n" ++ show grammar
 
 test_file :: String -> IO ()
 test_file file = do
-                s <- myReadFile file
+                s <- readFile file
                 case parseSpec s of
                     Left err -> putStrLn err
                     Right (s, grammar) -> putStrLn $ "the preamble is : \n " ++ s ++ "\nthe grammar is : \n" ++ show grammar
@@ -74,7 +78,3 @@ calcInputString =
     "Whitespace ::= {()} | @{?isSpace} Whitespace {()}.\n" ++
     "\n" ++
     "_ ::= Whitespace.\n"
-
-
-myReadFile :: FilePath -> IO String
-myReadFile file = readFile file

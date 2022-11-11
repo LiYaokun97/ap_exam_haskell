@@ -18,25 +18,13 @@ renderA (ALam x a) = "(\\" ++ x ++ " -> " ++ renderA a ++ ")"
 renderA (AApp a1 a2) = "(" ++ renderA a1 ++ " " ++ renderA a2 ++ ")"
 
 renderS :: Simple -> String
-renderS (SLit s) =
-  "do {" ++ rp "string" ++ " " ++ show s ++ "; " ++ gp "_" ++ " " ++ show s ++"}"
+renderS (SLit s) = "stoken_ " ++ show s
 renderS (SNTerm s) = gp s
 renderS SAnyChar = rp "get"
 renderS (SChar c) = rp "char" ++ " " ++ show c
 renderS (SNot s) = "nfb_ (" ++ renderS s ++ ")"
-renderS (SPred s h) = "pred_ " ++ renderS s ++ " " ++ renderH h
+renderS (SPred s h) = "pred_ (" ++ renderS s ++ ") " ++ renderH h
 renderS SDummy = "return (error \"dummy\")"
-
--- nfb_ :: Parser_ a -> Parser_ () -- notFollowedBy 
--- nfb_ p = do 
---           b <- (do 
---                   p
---                   return True
---                   ) 
---       <++  
---           return False
---           if b then RP.pfail else return ()
-
 
 renderR :: Rule -> String
 renderR ((nt,rk,mt), alts) =
@@ -64,6 +52,8 @@ prelude =
   "type Parser_ a = " ++ rp "ReadP" ++ " a\n" ++
   "return_ :: a -> Parser_ a -- sometimes req'd for overloading resolution\n" ++
   "return_ = return\n" ++
+  "stoken_ :: String -> Parser_ ()\n" ++
+  "stoken_ s = do " ++ rp "string" ++ " s; " ++ gp "_" ++ " s\n" ++
   "nfb_ :: Parser_ a -> Parser_ () -- notFollowedBy\n" ++
   "nfb_ p = do b <- (p >> return True) " ++ rp "<++" ++ " return False\n" ++
   "            if b then " ++ rp "pfail" ++ " else return ()\n" ++
@@ -74,31 +64,3 @@ prelude =
   "  [] -> Left \"no parse\"\n"++
   "  [(a,_)] -> Right a\n"++
   "  _ -> Left \"ambiguous\"\n\n"
-
-
--- type Parser_ a = RP.ReadP a
--- return_ :: a -> Parser_ a -- sometimes req'd for overloading resolution
--- return_ = return
-
--- nfb_ :: Parser_ a -> Parser_ () -- notFollowedBy 
--- nfb_ p = do b <- (p >> return True) rp <++  return False\n 
---             if b then rp pfail  else return ()
-
--- pred_ :: Parser_ a -> (a -> Bool) -> Parser_ a
--- pred_ p f = do 
---   a <- p; 
---   if f a 
---     then return a 
---     else RP.pfail  
-
--- parseTop p s = 
---   case RP.readP_to_S ++  (do 
---             p__ ""; 
---             a <- p; 
---             RP.eof;
---             return a
---         ) s 
---         of
---   [] -> Left "no parse"
---   [(a,_)] -> Right a
---   _ -> Left "ambiguous"

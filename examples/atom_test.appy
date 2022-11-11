@@ -1,0 +1,4 @@
+---
+Ident1 {:String} --comment
+ ::=IdChar{?not.isDigit} IdChar* !IdChar{_1 : _2}.
+-- comment 
